@@ -1,7 +1,9 @@
 #ifndef SOCKET_H
 #define SOCKET_H 1
 
+#include <netinet/in.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 class TCPSocket
 {
