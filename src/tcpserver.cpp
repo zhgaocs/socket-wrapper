@@ -2,4 +2,5 @@
 
 bool TCPServer::bind(int port)
 {
+    return true;
 }
