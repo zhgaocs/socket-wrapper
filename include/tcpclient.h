@@ -3,7 +3,7 @@
 
 #include "tcpsocket.h"
 
-class TCPClient : private TCPSocket
+class TCPClient : public TCPSocket
 {
 public:
     TCPClient();

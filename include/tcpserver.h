@@ -3,7 +3,7 @@
 
 #include "tcpsocket.h"
 
-class TCPServer : private TCPSocket
+class TCPServer : public TCPSocket
 {
 public:
     TCPServer();
