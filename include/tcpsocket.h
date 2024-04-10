@@ -1,9 +1,11 @@
 #ifndef SOCKET_H
 #define SOCKET_H 1
 
+#include <cstring>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdexcept>
 
 class TCPSocket
 {
@@ -12,10 +14,10 @@ public:
     virtual ~TCPSocket();
 
 public:
-    ssize_t receive(char *buffer, size_t size);
-    bool send(const char *msg);
+    ssize_t read(char *buf, size_t bufsize);
+    ssize_t write(const char *msg);
 
-private:
+protected:
     int sockfd;
 };
 
