@@ -9,9 +9,13 @@
 
 class TCPSocket
 {
-public:
+protected:
     TCPSocket();
     virtual ~TCPSocket();
+
+public:
+    TCPSocket(const TCPSocket&) = delete;
+    TCPSocket& operator=(const TCPSocket&) = delete;
 
 public:
     size_t read(char *buf, size_t bufsize);
