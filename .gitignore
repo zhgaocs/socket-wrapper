@@ -32,4 +32,5 @@
 *.app
 
 # Excluded directories
+/.vscode
 /build
