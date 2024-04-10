@@ -14,8 +14,8 @@ public:
     virtual ~TCPSocket();
 
 public:
-    ssize_t read(char *buf, size_t bufsize);
-    ssize_t write(const char *msg);
+    size_t read(char *buf, size_t bufsize);
+    size_t write(const char *msg);
 
 protected:
     int sockfd;
