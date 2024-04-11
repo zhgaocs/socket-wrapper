@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project (socket-wrapper)
+project(socket-wrapper)
 
 set(SOURCES
     src/tcpclient.cpp
