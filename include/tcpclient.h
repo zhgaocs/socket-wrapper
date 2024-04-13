@@ -2,16 +2,31 @@
 #define TCPCLIENT_H 1
 
 #include <arpa/inet.h>
-#include "tcpsocket.h"
+#include <sys/socket.h>
+#include <unistd.h>
 
-class TCPClient : public TCPSocket
+#include <cerrno>
+#include <cstring>
+#include <stdexcept>
+
+class TCPClient
 {
 public:
-    TCPClient() = default;
-    ~TCPClient() = default;
+    TCPClient();
+    ~TCPClient();
 
 public:
-    bool connect(const char *ip, int port);
+    TCPClient(const TCPClient&) = delete;
+    TCPClient& operator=(const TCPClient&) = delete;
+
+public:
+    bool connect(const char *servip, int servport);
+    void close();
+    size_t send(const char* msg);
+    size_t receive(char* buf, size_t bufsize);
+
+protected:
+    int sockfd;
 };
 
 #endif
