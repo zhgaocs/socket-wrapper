@@ -5,7 +5,6 @@ project(socket-wrapper)
 set(SOURCES
     src/tcpclient.cpp
     src/tcpserver.cpp
-    src/tcpsocket.cpp
     test/main.cpp
 )
 
@@ -15,3 +14,5 @@ target_include_directories(socket-wrapper-test
     PRIVATE 
         ${PROJECT_SOURCE_DIR}/include
 )
+
+target_link_libraries(socket-wrapper-test pthread)
