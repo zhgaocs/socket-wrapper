@@ -2,6 +2,7 @@
 #define TCPSERVER_H 1
 
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #define RECV_BUF_SIZE 128
+#define LISTEN_BACKLOG 128
 
 class TCPServer
 {

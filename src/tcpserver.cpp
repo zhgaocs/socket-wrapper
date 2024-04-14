@@ -1,8 +1,9 @@
 #include "tcpserver.h"
 
-TCPServer::TCPServer(int port) : listenfd(socket(AF_INET, SOCK_STREAM, 0)), connectfds()
+TCPServer::TCPServer(int port)
+    : listenfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP))
 {
-    if (-1 == listenfd)
+    if (listenfd < 0)
         throw std::runtime_error(strerror(errno));
 
     struct sockaddr_in servaddr;
@@ -10,13 +11,13 @@ TCPServer::TCPServer(int port) : listenfd(socket(AF_INET, SOCK_STREAM, 0)), conn
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(port);
 
-    if (-1 == bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)))
+    if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
     {
         ::close(listenfd);
         throw std::runtime_error(strerror(errno));
     }
 
-    if (-1 == listen(listenfd, 10))
+    if (listen(listenfd, LISTEN_BACKLOG) < 0)
     {
         ::close(listenfd);
         throw std::runtime_error(strerror(errno));
@@ -79,6 +80,8 @@ void TCPServer::run()
             if (new_socket < 0)
                 throw std::runtime_error(strerror(errno));
 
+            int flags = fcntl(new_socket, F_GETFL, 0);
+            fcntl(new_socket, F_SETFL, flags | O_NONBLOCK);
             connectfds.emplace_back(new_socket);
         }
 
@@ -86,34 +89,39 @@ void TCPServer::run()
         {
             if (FD_ISSET(fd, &readfds))
             {
-                memset(buf, 0, sizeof(buf));
-                int recv_len = recv(fd, buf, sizeof(buf), 0);
+                for (;;)
+                {
+                    ssize_t recv_len = recv(fd, buf, RECV_BUF_SIZE, 0);
 
-                if (-1 == recv_len)
-                    throw std::runtime_error(strerror(errno));
-                else if (0 == recv_len)
-                {
-                    ::close(fd);
-                    fd = -1;
-                }
-                else
-                {
-                    while (recv_len > 0)
+                    if (recv_len < 0)
                     {
-                        send(fd, buf, recv_len, 0);
-                        memset(buf, 0, sizeof(buf));
-
-                        int more_data;
-                        ioctl(fd, FIONREAD, &more_data);
-
-                        if (more_data > 0)
-                            recv_len = recv(fd, buf, sizeof(buf), 0);
-                        else
+                        if (errno == EWOULDBLOCK || errno == EAGAIN)
                             break;
+                        else
+                            throw std::runtime_error(strerror(errno));
                     }
-
-                    if (-1 == recv_len)
-                        throw std::runtime_error(strerror(errno));
+                    else if (recv_len == 0)
+                    {
+                        ::close(fd);
+                        fd = -1;
+                        break;
+                    }
+                    else
+                    {
+                        ssize_t total_sent = 0;
+                        while (total_sent < recv_len)
+                        {
+                            ssize_t ret = send(fd, buf + total_sent, recv_len - total_sent, 0);
+                            if (ret < 0)
+                            {
+                                if (errno == EWOULDBLOCK || errno == EAGAIN)
+                                    continue;
+                                else
+                                    throw std::runtime_error(strerror(errno));
+                            }
+                            total_sent += ret;
+                        }
+                    }
                 }
             }
         }

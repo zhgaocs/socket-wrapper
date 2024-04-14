@@ -2,7 +2,7 @@
 #define TCPCLIENT_H 1
 
 #include <arpa/inet.h>
-#include <sys/ioctl.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -17,14 +17,14 @@ public:
     ~TCPClient();
 
 public:
-    TCPClient(const TCPClient&) = delete;
-    TCPClient& operator=(const TCPClient&) = delete;
+    TCPClient(const TCPClient &) = delete;
+    TCPClient &operator=(const TCPClient &) = delete;
 
 public:
-    bool connect(const char *ip, int port);
+    bool connect(const char *ip, int port) const;
     void close();
-    ssize_t send(const char* msg);
-    ssize_t receive(char* buf, size_t bufsize);
+    ssize_t send(const char *msg) const;
+    ssize_t receive(char *buf, size_t bufsize) const;
 
 protected:
     int sockfd;

@@ -16,9 +16,9 @@ void client_thread(const char *ip, int port, const char *message)
         while (true)
         {
             client.send(message);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
             client.receive(buf, RECV_BUF_SIZE);
             std::cout << buf << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
     catch (const std::exception &e)
