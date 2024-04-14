@@ -6,6 +6,8 @@
 void client_thread(const char *ip, int port, const char *message)
 {
     TCPClient client;
+    char buf[RECV_BUF_SIZE];
+
     try
     {
         client.connect(ip, port);
@@ -14,8 +16,9 @@ void client_thread(const char *ip, int port, const char *message)
         while (true)
         {
             client.send(message);
-            std::cout << "Sent message: " << message << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(1)); // 间隔1秒发送一次消息
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            client.receive(buf, RECV_BUF_SIZE);
+            std::cout << buf << std::endl;
         }
     }
     catch (const std::exception &e)
@@ -26,7 +29,7 @@ void client_thread(const char *ip, int port, const char *message)
 
 int main()
 {
-    const char *server_ip = "localhost";
+    const char *server_ip = "127.0.0.1";
     int server_port = 12345;
 
     TCPServer server(server_port);
