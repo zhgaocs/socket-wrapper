@@ -102,7 +102,14 @@ void TCPServer::run()
                     {
                         send(fd, buf, recv_len, 0);
                         memset(buf, 0, sizeof(buf));
-                        recv_len = recv(fd, buf, sizeof(buf), 0);
+
+                        int more_data;
+                        ioctl(fd, FIONREAD, &more_data);
+
+                        if (more_data > 0)
+                            recv_len = recv(fd, buf, sizeof(buf), 0);
+                        else
+                            break;
                     }
 
                     if (-1 == recv_len)

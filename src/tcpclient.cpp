@@ -55,6 +55,8 @@ size_t TCPClient::send(const char *msg)
         throw std::runtime_error("Socket closed");
 }
 
+#include <sys/ioctl.h>
+
 size_t TCPClient::receive(char *buf, size_t bufsize)
 {
     if (sockfd != -1)
@@ -64,6 +66,12 @@ size_t TCPClient::receive(char *buf, size_t bufsize)
 
         while (total_received < bufsize)
         {
+            int count;
+            ioctl(sockfd, FIONREAD, &count);
+
+            if (0 == count)
+                break;
+
             recv_len = recv(sockfd, buf + total_received, bufsize - total_received, 0);
 
             if (0 == recv_len)
