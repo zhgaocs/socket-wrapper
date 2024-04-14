@@ -5,12 +5,12 @@
 
 void client_thread(const char *ip, int port, const char *message)
 {
-    TCPClient client;
     char buf[RECV_BUF_SIZE];
+    TCPClient client;
+    client.connect(ip, port);
 
     try
     {
-        client.connect(ip, port);
         std::cout << "Connected to server" << std::endl;
 
         while (true)
