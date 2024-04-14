@@ -55,8 +55,6 @@ size_t TCPClient::send(const char *msg)
         throw std::runtime_error("Socket closed");
 }
 
-#include <sys/ioctl.h>
-
 size_t TCPClient::receive(char *buf, size_t bufsize)
 {
     if (sockfd != -1)
