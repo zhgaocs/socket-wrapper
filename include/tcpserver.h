@@ -13,8 +13,13 @@
 #include <stdexcept>
 #include <vector>
 
+#ifndef RECV_BUF_SIZE
 #define RECV_BUF_SIZE 128
+#endif
+
+#ifndef LISTEN_BACKLOG
 #define LISTEN_BACKLOG 128
+#endif
 
 class TCPServer
 {
@@ -27,7 +32,7 @@ public:
     TCPServer &operator=(const TCPServer &) = delete;
 
 public:
-    void run();
+    void echoService();
     void close();
 
 protected:

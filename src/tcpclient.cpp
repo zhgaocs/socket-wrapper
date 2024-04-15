@@ -25,7 +25,7 @@ bool TCPClient::connect(const char *ip, int port) const
     if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0)
         throw std::runtime_error(strerror(errno));
 
-    if (::connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    if (::connect(sockfd, reinterpret_cast<struct sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0)
     {
         if (errno != EINPROGRESS)
             throw std::runtime_error(strerror(errno));
@@ -50,7 +50,7 @@ bool TCPClient::connect(const char *ip, int port) const
 
                 return true;
             }
-            else if (poll_ret == 0)
+            else if (!poll_ret)
                 return false;
             else
                 throw std::runtime_error(strerror(errno));
@@ -84,7 +84,7 @@ ssize_t TCPClient::send(const char *msg) const
         if (sent_len < 0)
         {
             if (errno == EWOULDBLOCK || errno == EAGAIN)
-                continue;
+                break;
             else
                 throw std::runtime_error(strerror(errno));
         }

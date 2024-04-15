@@ -11,7 +11,7 @@ TCPServer::TCPServer(int port)
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(port);
 
-    if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
+    if (bind(listenfd, reinterpret_cast<struct sockaddr *>(&servaddr), sizeof(servaddr)) < 0)
     {
         ::close(listenfd);
         throw std::runtime_error(strerror(errno));
@@ -33,20 +33,19 @@ void TCPServer::close()
 {
     for (auto &fd : connectfds)
     {
-        if (fd != -1)
-        {
-            ::close(fd);
-            fd = -1;
-        }
+        if (fd < 0)
+            continue;
+        ::close(fd);
+        fd = -1;
     }
-    if (listenfd != -1)
-    {
-        ::close(listenfd);
-        listenfd = -1;
-    }
+
+    if (listenfd < 0)
+        return;
+    ::close(listenfd);
+    listenfd = -1;
 }
 
-void TCPServer::run()
+void TCPServer::echoService()
 {
     fd_set readfds;
     int maxfd;
@@ -55,22 +54,21 @@ void TCPServer::run()
     for (;;)
     {
         FD_ZERO(&readfds);
-
         FD_SET(listenfd, &readfds);
         maxfd = listenfd;
 
         for (auto &fd : connectfds)
         {
-            if (fd >= 0)
-                FD_SET(fd, &readfds);
+            if (fd < 0)
+                continue;
+
+            FD_SET(fd, &readfds);
 
             if (fd > maxfd)
                 maxfd = fd;
         }
 
-        int activity = select(maxfd + 1, &readfds, nullptr, nullptr, nullptr);
-
-        if ((activity < 0) && (errno != EINTR))
+        if ((select(maxfd + 1, &readfds, nullptr, nullptr, nullptr) < 0) && (errno != EINTR))
             throw std::runtime_error(strerror(errno));
 
         if (FD_ISSET(listenfd, &readfds))
@@ -115,7 +113,7 @@ void TCPServer::run()
                             if (ret < 0)
                             {
                                 if (errno == EWOULDBLOCK || errno == EAGAIN)
-                                    continue;
+                                    continue; // To be optimized
                                 else
                                     throw std::runtime_error(strerror(errno));
                             }

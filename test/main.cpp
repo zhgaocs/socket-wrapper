@@ -3,20 +3,23 @@
 #include "tcpclient.h"
 #include "tcpserver.h"
 
+#ifndef BUF_SIZE
+#define BUF_SIZE 32
+#endif
+
 void client_thread(const char *ip, int port, const char *message)
 {
-    char buf[RECV_BUF_SIZE];
-    TCPClient client;
-    client.connect(ip, port);
-
     try
     {
+        char buf[BUF_SIZE];
+        TCPClient client;
+        client.connect(ip, port);
         std::cout << "Connected to server" << std::endl;
 
-        while (true)
+        for (;;)
         {
             client.send(message);
-            client.receive(buf, RECV_BUF_SIZE);
+            client.receive(buf, sizeof(buf));
             std::cout << buf << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
@@ -39,7 +42,7 @@ int main()
         {
             try
             {
-                server.run();
+                server.echoService();
             }
             catch (const std::exception &e)
             {
