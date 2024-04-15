@@ -6,12 +6,12 @@ TCPServer::TCPServer(int port)
     if (listenfd < 0)
         throw std::runtime_error(strerror(errno));
 
-    struct sockaddr_in servaddr;
+    sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(port);
 
-    if (bind(listenfd, reinterpret_cast<struct sockaddr *>(&servaddr), sizeof(servaddr)) < 0)
+    if (bind(listenfd, reinterpret_cast<sockaddr *>(&servaddr), sizeof(servaddr)) < 0)
     {
         ::close(listenfd);
         throw std::runtime_error(strerror(errno));
@@ -93,7 +93,7 @@ void TCPServer::echoService()
 
                     if (recv_len < 0)
                     {
-                        if (errno == EWOULDBLOCK || errno == EAGAIN)
+                        if (EWOULDBLOCK == errno || EAGAIN == errno)
                             break;
                         else
                             throw std::runtime_error(strerror(errno));
@@ -112,7 +112,7 @@ void TCPServer::echoService()
                             ssize_t ret = send(fd, buf + total_sent, recv_len - total_sent, 0);
                             if (ret < 0)
                             {
-                                if (errno == EWOULDBLOCK || errno == EAGAIN)
+                                if (EWOULDBLOCK == errno || EAGAIN == errno)
                                     continue; // To be optimized
                                 else
                                     throw std::runtime_error(strerror(errno));

@@ -1,3 +1,4 @@
+#include <cstring>
 #include <iostream>
 #include <thread>
 #include "tcpclient.h"
@@ -18,7 +19,7 @@ void client_thread(const char *ip, int port, const char *message)
 
         for (;;)
         {
-            client.send(message);
+            client.send(message, strlen(message));
             client.receive(buf, sizeof(buf));
             std::cout << buf << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(1));

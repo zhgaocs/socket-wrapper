@@ -23,8 +23,8 @@ public:
 public:
     bool connect(const char *ip, int port) const;
     void close();
-    ssize_t send(const char *msg) const;
-    ssize_t receive(char *buf, size_t bufsize) const;
+    ssize_t send(const void *msg, size_t length) const;
+    ssize_t receive(void *buf, size_t bufsize) const;
 
 protected:
     int sockfd;

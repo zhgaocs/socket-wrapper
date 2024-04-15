@@ -17,15 +17,14 @@ bool TCPClient::connect(const char *ip, int port) const
     if (sockfd < 0)
         return false;
 
-    struct sockaddr_in serv_addr;
-    std::memset(&serv_addr, 0, sizeof(serv_addr));
+    sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(port);
 
     if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0)
         throw std::runtime_error(strerror(errno));
 
-    if (::connect(sockfd, reinterpret_cast<struct sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0)
+    if (::connect(sockfd, reinterpret_cast<sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0)
     {
         if (errno != EINPROGRESS)
             throw std::runtime_error(strerror(errno));
@@ -68,22 +67,21 @@ void TCPClient::close()
     sockfd = -1;
 }
 
-ssize_t TCPClient::send(const char *msg) const
+ssize_t TCPClient::send(const void *msg, size_t legnth) const
 {
     if (sockfd < 0)
         return -1;
 
     size_t total_sent = 0;
-    size_t msg_len = strlen(msg);
     ssize_t sent_len = 0;
 
-    while (total_sent < msg_len)
+    while (total_sent < legnth)
     {
-        sent_len = ::send(sockfd, msg + total_sent, msg_len - total_sent, 0);
+        sent_len = ::send(sockfd, msg + total_sent, legnth - total_sent, 0);
 
         if (sent_len < 0)
         {
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
+            if (EWOULDBLOCK == errno || EAGAIN == errno)
                 break;
             else
                 throw std::runtime_error(strerror(errno));
@@ -95,7 +93,7 @@ ssize_t TCPClient::send(const char *msg) const
     return static_cast<ssize_t>(total_sent);
 }
 
-ssize_t TCPClient::receive(char *buf, size_t bufsize) const
+ssize_t TCPClient::receive(void *buf, size_t bufsize) const
 {
     if (sockfd < 0)
         return -1;
@@ -108,7 +106,7 @@ ssize_t TCPClient::receive(char *buf, size_t bufsize) const
 
         if (recv_len < 0)
         {
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
+            if (EWOULDBLOCK == errno || EAGAIN == errno)
                 break;
             else
                 throw std::runtime_error(strerror(errno));
