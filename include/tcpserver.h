@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -11,20 +12,16 @@
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
+#include <unordered_map>
 #include <vector>
 
-#ifndef RECV_BUF_SIZE
-#define RECV_BUF_SIZE 128
-#endif
-
-#ifndef LISTEN_BACKLOG
-#define LISTEN_BACKLOG 128
-#endif
+#include "macros.h"
+#include "message.h"
 
 class TCPServer
 {
 public:
-    TCPServer(int port);
+    TCPServer(uint16_t port);
     ~TCPServer();
 
 public:
@@ -32,12 +29,13 @@ public:
     TCPServer &operator=(const TCPServer &) = delete;
 
 public:
-    void echoService();
+    void echo();
+    void forward();
     void close();
 
 protected:
     int listenfd;
-    std::vector<int> connectfds;
+    int epollfd;
 };
 
 #endif
