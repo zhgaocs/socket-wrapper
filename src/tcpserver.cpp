@@ -207,8 +207,9 @@ void TCPServer::forward()
             if (events[i].data.fd == listenfd)
             {
                 sockaddr_in clientaddr;
+                socklen_t addr_len = sizeof(clientaddr);
 
-                int new_socket = accept(listenfd, reinterpret_cast<sockaddr *>(&clientaddr), &sizeof(clientaddr));
+                int new_socket = accept(listenfd, reinterpret_cast<sockaddr *>(&clientaddr), &addr_len);
                 if (new_socket < 0)
                     throw std::runtime_error(strerror(errno));
 
@@ -229,7 +230,7 @@ void TCPServer::forward()
             else
             {
                 char buf[RECV_BUF_SIZE];
-                int connfd = events[n].data.fd;
+                int connfd = events[i].data.fd;
 
                 ssize_t recv_len = recv(connfd, buf, RECV_BUF_SIZE, 0);
 
@@ -243,11 +244,11 @@ void TCPServer::forward()
                 else if (!recv_len)
                 {
                     ::close(connfd);
-                    buffers.erase(connfd);
                     continue;
                 }
                 else
                 {
+                    Message msg;
                     std::string &message_buffer = message_buffers[connfd];
                     
                     if (message_buffer.empty())
@@ -293,7 +294,7 @@ void TCPServer::forward()
                             else
                             {
                                 bufsize -= ret;
-                                memove(larger_buf, larger_buf + ret, bufsize);
+                                memmove(larger_buf, larger_buf + ret, bufsize);
 
                                 // TODO
                             }
