@@ -1,68 +1,76 @@
 #include "message.h"
 
+Message::Message()
+    : header(),
+      data(nullptr)
+{
+}
+
 Message::~Message()
 {
     if (data)
         delete[] data;
 }
 
-MessageBuilder &MessageBuilder::setDestIP(const char *ip)
+Message &Message::setDestPort(uint16_t port)
 {
-    strncpy(msg.header.dst_ip, ip, sizeof(msg.header.dst_ip));
-    msg.header.dst_ip[sizeof(msg.header.dst_ip) - 1] = '\0';
+    header.dst_port = htons(port);
     return *this;
 }
 
-MessageBuilder &MessageBuilder::setDestPort(int port)
+Message &Message::setSourcePort(uint16_t port)
 {
-    msg.header.dst_port = port;
+    header.src_port = htons(port);
     return *this;
 }
 
-MessageBuilder &MessageBuilder::setSourceIP(const char *ip)
+Message &Message::setData(const char *data)
 {
-    strncpy(msg.header.src_ip, ip, sizeof(msg.header.src_ip));
-    msg.header.src_ip[sizeof(msg.header.src_ip) - 1] = '\0';
+    if (this->data)
+        delete[] this->data;
+
+    size_t data_len = strlen(data);
+    this->data = new char[data_len + 1];
+    strncpy(this->data, data, data_len);
+    this->data[data_len] = '\0';
+
+    header.length = data_len + 1; // include '\0'
+
     return *this;
 }
 
-MessageBuilder &MessageBuilder::setSourcePort(int port)
+int serialize(const Message &msg, char *buf, size_t bufsize)
 {
-    msg.header.src_port = port;
-    return *this;
+    if (bufsize < sizeof(Header) + msg.header.length)
+        return -1;
+
+    memcpy(buf, &msg.header, sizeof(Header));
+    memcpy(buf + sizeof(Header), msg.data, msg.header.length);
+
+    return sizeof(Header) + msg.header.length;
 }
 
-MessageBuilder &MessageBuilder::setData(const char *data)
+int deserialize(const char *buf, size_t bufsize, Message &msg)
 {
-    if (msg.data)
+    if (bufsize < sizeof(Header))
+        return 0;
+
+    Header header;
+    memcpy(&header, buf, sizeof(Header));
+
+    int rest_len = bufsize - sizeof(Header);
+    if (rest_len < header.length)
+        return 0;
+
+    char *data = new (std::nothrow) char[header.length];
+    if (!data)
+        return -1;
+    memcpy(data, buf + sizeof(Header), header.length);
+
+    msg.header = std::move(header);
+    if (!msg.data)
         delete[] msg.data;
-    msg.header.length = strlen(data);
-    msg.data = new char[msg.header.length + 1];
-    strncpy(msg.data, data, msg.header.length);
-    msg.data[msg.header.length] = '\0';
-    return *this;
-}
+    msg.data = data;
 
-Message MessageBuilder::build()
-{
-    Message result = std::move(msg);
-    msg.data = nullptr;
-    msg.header.length = 0;
-    return result;
-}
-
-char *serialize(const Message &msg)
-{
-    char *buffer = new char[sizeof(msg.header) + msg.header.length];
-    std::memcpy(buffer, &msg.header, sizeof(msg.header));
-    std::memcpy(buffer + sizeof(msg.header), msg.data, msg.header.length);
-    return buffer;
-}
-
-void deserialize(const char *buffer, Message &msg)
-{
-    std::memcpy(&msg.header, buffer, sizeof(msg.header));
-    msg.data = new char[msg.header.length + 1];
-    std::memcpy(msg.data, buffer + sizeof(msg.header), msg.header.length);
-    msg.data[msg.header.length] = '\0';
+    return sizeof(Header) + msg.header.length;
 }

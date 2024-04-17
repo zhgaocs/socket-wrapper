@@ -1,43 +1,35 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H 1
 
+#include <netinet/in.h>
+
 #include <cstring>
+#include <stdexcept>
 #include <utility>
 
 struct Header
 {
-    int type;
-    int length;
-    char src_ip[16];
-    char dst_ip[16];
-    unsigned short src_port;
-    unsigned short dst_port;
+    uint32_t length;   /* contains '\0' in data*/
+    uint16_t src_port; /* port in network byte order */
+    uint16_t dst_port; /* port in network byte order */
 };
 
 struct Message
 {
-    Message() = default;
+    Message();
     ~Message();
+    Message(const Message &) = delete;
+    Message &operator=(const Message &) = delete;
+
+    Message &setDestPort(uint16_t port);
+    Message &setSourcePort(uint16_t port);
+    Message &setData(const char *data);
 
     Header header;
-    char *data = nullptr;
+    char *data;
 };
 
-class MessageBuilder
-{
-public:
-    MessageBuilder &setDestIP(const char *ip);
-    MessageBuilder &setDestPort(int port);
-    MessageBuilder &setSourceIP(const char *ip);
-    MessageBuilder &setSourcePort(int port);
-    MessageBuilder &setData(const char *data);
-    Message build();
-
-private:
-    Message msg;
-};
-
-char *serialize(const Message &msg);
-void deserialize(const char *buffer, Message &msg);
+int serialize(const Message &msg, char *buf, size_t bufsize);
+int deserialize(const char *buf, size_t bufsize, Message &msg);
 
 #endif
