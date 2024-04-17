@@ -8,7 +8,7 @@
 #define BUF_SIZE 32
 #endif
 
-void client_thread(const char *ip, int port, const char *message)
+void client_thread(const char *ip, uint16_t port, const char *message)
 {
     try
     {
@@ -34,7 +34,7 @@ void client_thread(const char *ip, int port, const char *message)
 int main()
 {
     const char *server_ip = "127.0.0.1";
-    int server_port = 12345;
+    uint16_t server_port = 12345;
 
     TCPServer server(server_port);
 
@@ -43,7 +43,7 @@ int main()
         {
             try
             {
-                server.echoService();
+                server.echo();
             }
             catch (const std::exception &e)
             {
