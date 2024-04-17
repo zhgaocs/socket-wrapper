@@ -21,7 +21,7 @@ public:
     TCPClient &operator=(const TCPClient &) = delete;
 
 public:
-    bool connect(const char *ip, int port) const;
+    bool connect(const char *ip, uint16_t port) const;
     void close();
     ssize_t send(const void *msg, size_t length) const;
     ssize_t receive(void *buf, size_t bufsize) const;

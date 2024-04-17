@@ -12,7 +12,7 @@ TCPClient::~TCPClient()
     close();
 }
 
-bool TCPClient::connect(const char *ip, int port) const
+bool TCPClient::connect(const char *ip, uint16_t port) const
 {
     if (sockfd < 0)
         return false;
