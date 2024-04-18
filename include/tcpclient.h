@@ -10,6 +10,8 @@
 #include <cstring>
 #include <stdexcept>
 
+#include "macros.h"
+
 class TCPClient
 {
 public:

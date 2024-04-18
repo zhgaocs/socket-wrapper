@@ -3,15 +3,13 @@
 
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/epoll.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <unistd.h>
 
 #include <cerrno>
-#include <cstring>
-#include <stdexcept>
 #include <unordered_map>
 #include <vector>
 
