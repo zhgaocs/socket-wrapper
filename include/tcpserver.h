@@ -34,8 +34,12 @@ public:
     void close();
 
 protected:
+    static void aux_send(int fd, const char* buf, size_t length);
+
+protected:
     int listenfd;
     int epollfd;
+    std::vector<int> connfds;
 };
 
 #endif
