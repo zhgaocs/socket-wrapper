@@ -21,13 +21,15 @@ public:
     TCPClient &operator=(const TCPClient &) = delete;
 
 public:
-    bool connect(const char *ip, uint16_t port) const;
+    bool is_connected() const;
+    bool connect(const char *ip, uint16_t port);
     void close();
-    ssize_t send(const void *msg, size_t length) const;
-    ssize_t receive(void *buf, size_t bufsize) const;
+    ssize_t send(const char *msg, size_t length) const;
+    ssize_t receive(char *buf, size_t bufsize) const;
 
 protected:
     int sockfd;
+    bool connected;
 };
 
 #endif

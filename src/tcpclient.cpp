@@ -1,13 +1,14 @@
 #include "tcpclient.h"
 
 TCPClient::TCPClient()
-    : sockfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP))
+    : sockfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)),
+      connected(false)
 {
     if (sockfd < 0)
         throw std::runtime_error(strerror(errno));
 }
 
-TCPClient::~TCPClient()
+inline TCPClient::~TCPClient()
 {
     close();
 }
@@ -30,11 +31,11 @@ bool TCPClient::connect(const char *ip, uint16_t port) const
             throw std::runtime_error(strerror(errno));
         else
         {
-            struct pollfd pfd;
+            pollfd pfd;
             pfd.fd = sockfd;
             pfd.events = POLLOUT;
 
-            int poll_ret = poll(&pfd, 1, -1);
+            int poll_ret = poll(&pfd, 1, CONNECT_POLL_TIMEOUT_MS);
 
             if (poll_ret > 0)
             {
@@ -47,33 +48,50 @@ bool TCPClient::connect(const char *ip, uint16_t port) const
                 if (optval)
                     throw std::runtime_error(strerror(optval));
 
+                connected = true;
                 return true;
             }
             else if (!poll_ret)
+            {
+                connected = false;
                 return false;
+            }
             else
                 throw std::runtime_error(strerror(errno));
         }
     }
     else
+    {
+        connected = true;
         return true;
+    }
+}
+
+inline bool TCPClient::is_connected() const
+{
+    return connected;
 }
 
 void TCPClient::close()
 {
+    connected = false;
     if (sockfd < 0)
         return;
     ::close(sockfd);
     sockfd = -1;
 }
 
-ssize_t TCPClient::send(const void *msg, size_t legnth) const
+ssize_t TCPClient::send(const char *msg, size_t legnth) const
 {
-    if (sockfd < 0)
+    if (!connected)
         return -1;
 
     size_t total_sent = 0;
     ssize_t sent_len = 0;
+
+    pollfd pfd;
+    pfd.fd = sockfd;
+    pfd.events = POLLOUT;
 
     while (total_sent < legnth)
     {
@@ -82,7 +100,16 @@ ssize_t TCPClient::send(const void *msg, size_t legnth) const
         if (sent_len < 0)
         {
             if (EWOULDBLOCK == errno || EAGAIN == errno)
-                break;
+            {
+                int poll_ret = poll(&pfd, 1, SEND_POLL_TIMEOUT_MS);
+
+                if (poll_ret > 0)
+                    continue;
+                else if (!poll_ret)
+                    break;
+                else
+                    throw std::runtime_error(strerror(errno));
+            }
             else
                 throw std::runtime_error(strerror(errno));
         }
@@ -93,12 +120,17 @@ ssize_t TCPClient::send(const void *msg, size_t legnth) const
     return static_cast<ssize_t>(total_sent);
 }
 
-ssize_t TCPClient::receive(void *buf, size_t bufsize) const
+ssize_t TCPClient::receive(char *buf, size_t bufsize) const
 {
-    if (sockfd < 0)
+    if (!connected)
         return -1;
+
     size_t total_received = 0;
     ssize_t recv_len = 0;
+
+    pollfd pfd;
+    pfd.fd = sockfd;
+    pfd.events = POLLIN;
 
     while (total_received < bufsize)
     {
@@ -107,7 +139,16 @@ ssize_t TCPClient::receive(void *buf, size_t bufsize) const
         if (recv_len < 0)
         {
             if (EWOULDBLOCK == errno || EAGAIN == errno)
-                break;
+            {
+                int poll_ret = poll(&pfd, 1, RECV_POLL_TIMEOUT_MS);
+
+                if (poll_ret > 0)
+                    continue;
+                else if (!poll_ret)
+                    break;
+                else
+                    throw std::runtime_error(strerror(errno));
+            }
             else
                 throw std::runtime_error(strerror(errno));
         }
