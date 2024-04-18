@@ -1,9 +1,15 @@
 #ifndef MACROS_H
 #define MACROS_H 1
 
-#define LISTEN_BACKLOG 128       /* used in ::listen() */
-#define RECV_BUF_SIZE 128        /* used in ::recv() */
-#define IDLE_MAX_WAIT_TIME 10000 /* millisecond, used in TCPServer::echo() */
-#define EPOLL_WAIT_MAX_EVENTS 16 /* used in TCPServer::forward() */
+/* used in TCPClient */
+#define CONNECT_POLL_TIMEOUT_MS 10
+#define SEND_POLL_TIMEOUT_MS 200
+#define RECV_POLL_TIMEOUT_MS 200
+
+/* used in TCPServer */
+#define LISTEN_BACKLOG 64
+#define RECV_BUF_SIZE 128
+#define SERVER_MAX_IDLE_TIME_MS 10000
+#define EPOLL_WAIT_MAX_EVENTS 16
 
 #endif
