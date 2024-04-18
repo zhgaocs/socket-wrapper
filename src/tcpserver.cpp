@@ -39,7 +39,7 @@ TCPServer::TCPServer(uint16_t port)
     }
 }
 
-inline TCPServer::~TCPServer()
+TCPServer::~TCPServer()
 {
     close();
 }
@@ -76,7 +76,7 @@ void TCPServer::aux_send(int fd, const char *msg, size_t length)
     ssize_t total_sent = 0;
 
     pollfd pfd;
-    pfd.fd = sockfd;
+    pfd.fd = fd;
     pfd.events = POLLOUT;
 
     while (total_sent < length)

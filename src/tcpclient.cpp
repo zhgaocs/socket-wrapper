@@ -8,12 +8,12 @@ TCPClient::TCPClient()
         throw std::runtime_error(strerror(errno));
 }
 
-inline TCPClient::~TCPClient()
+TCPClient::~TCPClient()
 {
     close();
 }
 
-bool TCPClient::connect(const char *ip, uint16_t port) const
+bool TCPClient::connect(const char *ip, uint16_t port)
 {
     if (sockfd < 0)
         return false;
