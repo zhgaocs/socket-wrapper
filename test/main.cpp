@@ -4,15 +4,13 @@
 #include "tcpclient.h"
 #include "tcpserver.h"
 
-#ifndef BUF_SIZE
 #define BUF_SIZE 32
-#endif
 
 void client_thread(const char *ip, uint16_t port, const char *message)
 {
+    char buf[BUF_SIZE];
     try
     {
-        char buf[BUF_SIZE];
         TCPClient client;
         client.connect(ip, port);
         std::cout << "Connected to server" << std::endl;
@@ -36,13 +34,12 @@ int main()
     const char *server_ip = "127.0.0.1";
     uint16_t server_port = 12345;
 
-    TCPServer server(server_port);
-
     std::thread server_thread(
-        [&server]()
+        []()
         {
             try
             {
+                TCPServer server(server_port);
                 server.echo();
             }
             catch (const std::exception &e)
@@ -57,6 +54,4 @@ int main()
     server_thread.join();
     client1_thread.join();
     client2_thread.join();
-
-    return 0;
 }

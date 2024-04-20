@@ -260,43 +260,43 @@ void TCPServer::forward()
 
                     if (last_recv_data.empty())
                     {
-                        int ret = deserialize(buf, recv_len, msg);
+                        int ret = deserialize(msg, buf, recv_len);
 
                         if (ret < 0)
                             throw std::bad_alloc();
                         else if (!ret) // incomplete
                         {
                             last_recv_data.resize(recv_len);
-                            memcpy(&last_recv_data[0], buf, recv_len);
+                            memcpy(&last_recv_data[0], buf, /* sizeof(char) * */ recv_len);
                         }
                         else
-                            aux_send(port2fd[msg.header.dst_port], msg.data, msg.header.length);
+                            aux_send(port2fd[msg.header.dst_port], msg.data, msg.header.data_len);
                     }
                     else
                     {
                         char larger_buf[RECV_BUF_SIZE << 1];
-                        size_t bufsize = last_recv_data.size() + recv_len;
+                        size_t len = last_recv_data.size() + recv_len;
                         strncpy(larger_buf, last_recv_data.data(), last_recv_data.size());
                         strncpy(larger_buf + last_recv_data.size(), buf, recv_len);
 
                         for (;;)
                         {
-                            int ret = deserialize(larger_buf, bufsize, msg);
+                            int ret = deserialize(msg, larger_buf, len);
 
                             if (ret < 0)
                                 throw std::bad_alloc();
                             else if (!ret)
                             {
-                                last_recv_data.resize(bufsize);
-                                memcpy(&last_recv_data[0], larger_buf, bufsize);
+                                last_recv_data.resize(len);
+                                memcpy(&last_recv_data[0], larger_buf, /* sizeof(char) * */ len);
 
                                 break;
                             }
                             else
                             {
-                                bufsize -= ret;
-                                memmove(larger_buf, larger_buf + ret, bufsize);
-                                aux_send(port2fd[msg.header.dst_port], msg.data, msg.header.length);
+                                len -= ret;
+                                memmove(larger_buf, larger_buf + ret, len);
+                                aux_send(port2fd[msg.header.dst_port], msg.data, msg.header.data_len);
                             }
                         }
                     }
