@@ -81,7 +81,7 @@ void TCPClient::close()
     sockfd = -1;
 }
 
-ssize_t TCPClient::send(const char *msg, size_t legnth) const
+ssize_t TCPClient::send(const char *buf, size_t bufsize) const
 {
     if (!connected)
         return -1;
@@ -93,9 +93,9 @@ ssize_t TCPClient::send(const char *msg, size_t legnth) const
     pfd.fd = sockfd;
     pfd.events = POLLOUT;
 
-    while (total_sent < legnth)
+    while (total_sent < bufsize)
     {
-        sent_len = ::send(sockfd, msg + total_sent, legnth - total_sent, 0);
+        sent_len = ::send(sockfd, buf + total_sent, bufsize - total_sent, 0);
 
         if (sent_len < 0)
         {
