@@ -4,43 +4,48 @@
 #include "tcpclient.h"
 #include "tcpserver.h"
 
-#define BUF_SIZE 32
+#define MAIN_FUNC_BUFSIZE 32
 
-void client_thread(const char *ip, uint16_t port, const char *message)
+void client_foo(const TCPClient &client, uint16_t peer_port)
 {
-    char buf[BUF_SIZE];
-    try
-    {
-        TCPClient client;
-        client.connect(ip, port);
-        std::cout << "Connected to server" << std::endl;
+    char buf[MAIN_FUNC_BUFSIZE];
+    char str[] = "Hello client";
+    Message msg;
 
-        for (;;)
-        {
-            client.send(message, strlen(message));
-            client.receive(buf, sizeof(buf));
-            std::cout << buf << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
-    }
-    catch (const std::exception &e)
+    for (;;)
     {
-        std::cerr << "Client error: " << e.what() << std::endl;
+        int recv_len = client.receive(buf, MAIN_FUNC_BUFSIZE);
+
+        if (recv_len)
+        {
+            deserialize(msg, buf, recv_len);
+            std::cout << "Received from port#" << ntohs(msg.header.src_port) << msg.data << std::endl;
+        }
+        else
+        {
+            msg.setSrcPort(client.get_port())
+                .setDstPort(peer_port)
+                .setData(str, sizeof(str));
+
+            int ret = serialize(buf, MAIN_FUNC_BUFSIZE, msg);
+            client.send(buf, ret);
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    const char *server_ip = "127.0.0.1";
-    uint16_t server_port = 12345;
+    const char *serv_ip = "127.0.0.1";
+    uint16_t serv_port = 12345;
 
     std::thread server_thread(
-        []()
+        [=]()
         {
             try
             {
-                TCPServer server(server_port);
-                server.echo();
+                TCPServer server(serv_port);
+                server.forward();
             }
             catch (const std::exception &e)
             {
@@ -48,10 +53,25 @@ int main()
             }
         });
 
-    std::thread client1_thread(client_thread, server_ip, server_port, "client1: hello");
-    std::thread client2_thread(client_thread, server_ip, server_port, "client2: hello");
+    try
+    {
+        TCPClient client1, client2;
 
-    server_thread.join();
-    client1_thread.join();
-    client2_thread.join();
+        client1.connect(serv_ip, serv_port);
+        client2.connect(serv_ip, serv_port);
+
+        uint16_t client1_port = client1.get_port();
+        uint16_t client2_port = client2.get_port();
+
+        std::thread client1_thread(client_foo(client1, client2_port));
+        std::thread client2_thread(client_foo(client2, client1_port));
+
+        client1_thread.join();
+        client2_thread.join();
+        server_thread.join();
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Client error: " << e.what() << std::endl;
+    }
 }
