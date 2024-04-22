@@ -7,16 +7,9 @@
 #include <stdexcept>
 #include <utility>
 
-enum struct MessageType : uint16_t
-{
-    PORT_INFO,
-    REG_MSG
-};
-
 struct Header
 {
-    MessageType msg_type;
-    uint16_t data_len;
+    uint32_t data_len;
     uint16_t src_port; /* port in network byte order */
     uint16_t dst_port; /* port in network byte order */
 };
@@ -28,7 +21,6 @@ struct Message
     Message(const Message &) = delete;
     Message &operator=(const Message &) = delete;
 
-    Message &setMsgType(MessageType type);
     Message &setDstPort(uint16_t port);
     Message &setSrcPort(uint16_t port);
     Message &setData(const char *buf, size_t bufsize);

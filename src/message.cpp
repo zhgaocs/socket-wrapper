@@ -12,12 +12,6 @@ Message::~Message()
         delete[] data;
 }
 
-Message &Message::setMsgType(MessageType type)
-{
-    header.msg_type = type;
-    return *this;
-}
-
 Message &Message::setDstPort(uint16_t port)
 {
     header.dst_port = htons(port);
