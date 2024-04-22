@@ -10,8 +10,6 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "macros.h"
-
 class TCPClient
 {
 public:
@@ -24,14 +22,22 @@ public:
 
 public:
     bool is_connected() const;
-    bool connect(const char *ip, uint16_t port);
+    bool connect(const char *servip, uint16_t servport);
     void close();
     ssize_t send(const char *buf, size_t bufsize) const;
     ssize_t receive(char *buf, size_t bufsize) const;
 
+public:
+    uint16_t get_port() const;
+
 protected:
     int sockfd;
     bool connected;
+
+protected:
+    static constexpr int CONNECT_POLL_TIMEOUT_MS = 100;
+    static constexpr int SEND_POLL_TIMEOUT_MS = 10;
+    static constexpr int RECV_POLL_TIMEOUT_MS = 10;
 };
 
 #endif

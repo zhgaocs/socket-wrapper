@@ -13,19 +13,19 @@ TCPClient::~TCPClient()
     close();
 }
 
-bool TCPClient::connect(const char *ip, uint16_t port)
+bool TCPClient::connect(const char *servip, uint16_t servport)
 {
     if (sockfd < 0)
         return false;
 
-    sockaddr_in serv_addr;
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(port);
+    sockaddr_in servaddr;
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(servport);
 
-    if (inet_pton(AF_INET, ip, &serv_addr.sin_addr) <= 0)
+    if (inet_pton(AF_INET, servip, &servaddr.sin_addr) <= 0)
         throw std::runtime_error(strerror(errno));
 
-    if (::connect(sockfd, reinterpret_cast<sockaddr *>(&serv_addr), sizeof(serv_addr)) < 0)
+    if (::connect(sockfd, reinterpret_cast<sockaddr *>(&servaddr), sizeof(servaddr)) < 0)
     {
         if (errno != EINPROGRESS)
             throw std::runtime_error(strerror(errno));
@@ -159,4 +159,20 @@ ssize_t TCPClient::receive(char *buf, size_t bufsize) const
     }
 
     return static_cast<ssize_t>(total_received);
+}
+
+uint16_t TCPClient::get_port() const
+{
+    if (!connected)
+        return 0;
+    else
+    {
+        sockaddr_in addr;
+        socklen_t len = sizeof(addr);
+
+        if (getsockname(sockfd, reinterpret_cast<sockaddr *>(&addr), &len) < 0)
+            throw std::runtime_error(strerror(errno));
+
+        return ntohs(addr.sin_port);
+    }
 }
