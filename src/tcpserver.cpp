@@ -276,7 +276,7 @@ void TCPServer::forward()
                             {
                                 aux_send(port2fd[msg.header.dst_port], buf, ret);
                                 recv_len -= ret;
-                                memmove(larger_buf, larger_buf + ret, recv_len);
+                                memmove(buf, buf + ret, recv_len);
                             }
                         }
                     }
