@@ -26,9 +26,12 @@ public:
     TCPServer &operator=(const TCPServer &) = delete;
 
 public:
+    void run();
+    void close();
+
+protected:
     void echo();
     void forward();
-    void close();
 
 protected:
     static void aux_send(int fd, const char *buf, size_t length);

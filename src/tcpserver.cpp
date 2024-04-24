@@ -1,4 +1,5 @@
 #include "tcpserver.h"
+#include <iostream>
 
 TCPServer::TCPServer(uint16_t port)
     : listenfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)),
@@ -44,6 +45,11 @@ TCPServer::~TCPServer()
     close();
 }
 
+void TCPServer::run()
+{
+    forward();
+}
+
 void TCPServer::close()
 {
     for (auto &fd : connfds)
@@ -68,37 +74,6 @@ void TCPServer::close()
     {
         ::close(listenfd);
         listenfd = -1;
-    }
-}
-
-void TCPServer::aux_send(int fd, const char *msg, size_t length)
-{
-    ssize_t total_sent = 0;
-
-    pollfd pfd;
-    pfd.fd = fd;
-    pfd.events = POLLOUT;
-
-    while (total_sent < length)
-    {
-        ssize_t ret = send(fd, msg + total_sent, length - total_sent, 0);
-
-        if (ret < 0)
-        {
-            if (EWOULDBLOCK == errno || EAGAIN == errno)
-            {
-                int poll_ret = poll(&pfd, 1, SEND_POLL_TIMEOUT_MS);
-
-                if (poll_ret > 0)
-                    continue;
-                else
-                    throw std::runtime_error(strerror(errno));
-            }
-            else
-                throw std::runtime_error(strerror(errno));
-        }
-
-        total_sent += ret;
     }
 }
 
@@ -310,5 +285,36 @@ void TCPServer::forward()
                 }
             }
         }
+    }
+}
+
+void TCPServer::aux_send(int fd, const char *msg, size_t length)
+{
+    ssize_t total_sent = 0;
+
+    pollfd pfd;
+    pfd.fd = fd;
+    pfd.events = POLLOUT;
+
+    while (total_sent < length)
+    {
+        ssize_t ret = send(fd, msg + total_sent, length - total_sent, 0);
+
+        if (ret < 0)
+        {
+            if (EWOULDBLOCK == errno || EAGAIN == errno)
+            {
+                int poll_ret = poll(&pfd, 1, SEND_POLL_TIMEOUT_MS);
+
+                if (poll_ret > 0)
+                    continue;
+                else
+                    throw std::runtime_error(strerror(errno));
+            }
+            else
+                throw std::runtime_error(strerror(errno));
+        }
+
+        total_sent += ret;
     }
 }
