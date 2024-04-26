@@ -35,7 +35,7 @@ bool TCPClient::connect(const char *servip, uint16_t servport)
             pfd.fd = sockfd;
             pfd.events = POLLOUT;
 
-            int poll_ret = poll(&pfd, 1, CONNECT_POLL_TIMEOUT_MS);
+            int poll_ret = poll(&pfd, 1, POLL_TIMEOUT_MS);
 
             if (poll_ret > 0)
             {
@@ -67,7 +67,7 @@ bool TCPClient::connect(const char *servip, uint16_t servport)
     }
 }
 
-inline bool TCPClient::is_connected() const
+bool TCPClient::is_connected() const
 {
     return connected;
 }
@@ -84,14 +84,10 @@ void TCPClient::close()
 ssize_t TCPClient::send(const char *buf, size_t bufsize) const
 {
     if (!connected)
-        return -1;
+       return -1;
 
     size_t total_sent = 0;
     ssize_t sent_len = 0;
-
-    pollfd pfd;
-    pfd.fd = sockfd;
-    pfd.events = POLLOUT;
 
     while (total_sent < bufsize)
     {
@@ -100,16 +96,7 @@ ssize_t TCPClient::send(const char *buf, size_t bufsize) const
         if (sent_len < 0)
         {
             if (EWOULDBLOCK == errno || EAGAIN == errno)
-            {
-                int poll_ret = poll(&pfd, 1, SEND_POLL_TIMEOUT_MS);
-
-                if (poll_ret > 0)
-                    continue;
-                else if (!poll_ret)
-                    break;
-                else
-                    throw std::runtime_error(strerror(errno));
-            }
+                break;
             else
                 throw std::runtime_error(strerror(errno));
         }
@@ -128,10 +115,6 @@ ssize_t TCPClient::receive(char *buf, size_t bufsize) const
     size_t total_received = 0;
     ssize_t recv_len = 0;
 
-    pollfd pfd;
-    pfd.fd = sockfd;
-    pfd.events = POLLIN;
-
     while (total_received < bufsize)
     {
         recv_len = recv(sockfd, buf + total_received, bufsize - total_received, 0);
@@ -139,16 +122,7 @@ ssize_t TCPClient::receive(char *buf, size_t bufsize) const
         if (recv_len < 0)
         {
             if (EWOULDBLOCK == errno || EAGAIN == errno)
-            {
-                int poll_ret = poll(&pfd, 1, RECV_POLL_TIMEOUT_MS);
-
-                if (poll_ret > 0)
-                    continue;
-                else if (!poll_ret)
-                    break;
-                else
-                    throw std::runtime_error(strerror(errno));
-            }
+                break;
             else
                 throw std::runtime_error(strerror(errno));
         }
