@@ -6,7 +6,6 @@
 #include <poll.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
-#include <sys/select.h>
 #include <unistd.h>
 
 #include <cerrno>
@@ -43,11 +42,9 @@ protected:
 
 protected:
     static constexpr int LISTEN_BACKLOG = 32;
+    static constexpr int RECV_BUFSIZE = 32;
+    static constexpr int MAX_IDLE_TIME_MS = 5000;
     static constexpr int EPOLL_WAIT_MAX_EVENTS = 32;
-    static constexpr int RECV_BUF_SIZE = 32;
-    static constexpr int SEND_POLL_TIMEOUT_MS = 10;
-    static constexpr int RECV_POLL_TIMEOUT_MS = 10;
-    static constexpr int SERV_MAX_IDLE_TIME_MS = 1000;
 };
 
 #endif
