@@ -1,5 +1,4 @@
 #include "tcpserver.h"
-#include <iostream>
 
 TCPServer::TCPServer(uint16_t port)
     : listenfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)),
@@ -47,6 +46,7 @@ TCPServer::~TCPServer()
 
 void TCPServer::run()
 {
+    // echo();
     forward();
 }
 
@@ -79,104 +79,24 @@ void TCPServer::close()
 
 void TCPServer::echo()
 {
-    int maxfd;
-    fd_set readfds;
-    char buf[RECV_BUF_SIZE];
+    size_t connect_cnt = 0;
 
-    for (;;)
-    {
-        FD_ZERO(&readfds);
-        FD_SET(listenfd, &readfds);
-        maxfd = listenfd;
-
-        bool idle = true;
-
-        for (auto &fd : connfds)
-        {
-            if (fd < 0)
-                continue;
-
-            idle = false;
-            FD_SET(fd, &readfds);
-
-            if (fd > maxfd)
-                maxfd = fd;
-        }
-
-        if (idle)
-        {
-            timeval timeout;
-            timeout.tv_sec = SERV_MAX_IDLE_TIME_MS / 1000;
-            timeout.tv_usec = SERV_MAX_IDLE_TIME_MS % 1000;
-
-            int activity = select(maxfd + 1, &readfds, nullptr, nullptr, &timeout);
-
-            if (!activity)
-            {
-                close();
-                break;
-            }
-            else if (activity < 0)
-                throw std::runtime_error(strerror(errno));
-        }
-        else if (select(maxfd + 1, &readfds, nullptr, nullptr, nullptr) < 0)
-            throw std::runtime_error(strerror(errno));
-
-        if (FD_ISSET(listenfd, &readfds))
-        {
-            int new_connfd = accept(listenfd, nullptr, nullptr);
-            if (new_connfd < 0)
-                throw std::runtime_error(strerror(errno));
-
-            int flags = fcntl(new_connfd, F_GETFL, 0);
-            if (flags < 0)
-                throw std::runtime_error(strerror(errno));
-
-            if (fcntl(new_connfd, F_SETFL, flags | O_NONBLOCK) < 0)
-                throw std::runtime_error(strerror(errno));
-
-            connfds.emplace_back(new_connfd);
-        }
-
-        for (auto &fd : connfds)
-        {
-            if (FD_ISSET(fd, &readfds))
-            {
-                for (;;)
-                {
-                    ssize_t recv_len = recv(fd, buf, RECV_BUF_SIZE, 0);
-
-                    if (recv_len < 0)
-                        throw std::runtime_error(strerror(errno));
-                    else if (!recv_len)
-                    {
-                        ::close(fd);
-                        fd = -1;
-                        break;
-                    }
-                    else
-                        aux_send(fd, buf, recv_len);
-                }
-            }
-        }
-    }
-}
-
-void TCPServer::forward()
-{
     epoll_event ev, events[EPOLL_WAIT_MAX_EVENTS];
     ev.events = EPOLLIN;
     ev.data.fd = listenfd;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev) < 0)
         throw std::runtime_error(strerror(errno));
 
-    std::unordered_map<int, size_t> fd2idx; // the subscript of fd in vector
-    std::unordered_map<uint16_t, int> port2fd;
-    std::unordered_map<int, std::string> fd2msgdata;
+    std::unordered_map<int, size_t> fd2idx; // the subscript of connfd in vector
 
     for (;;)
     {
-        int nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, -1);
+        int nfds;
+
+        if (!connect_cnt)
+            nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, MAX_IDLE_TIME_MS);
+        else
+            nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, -1);
 
         if (nfds < 0)
         {
@@ -185,6 +105,9 @@ void TCPServer::forward()
             else
                 throw std::runtime_error(strerror(errno));
         }
+
+        if (!nfds && !connect_cnt)
+            break;
 
         for (int i = 0; i < nfds; ++i)
         {
@@ -208,22 +131,110 @@ void TCPServer::forward()
                 ev.data.fd = new_connfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_connfd, &ev) < 0)
                     throw std::runtime_error(strerror(errno));
+                
+                ++connect_cnt;
+                fd2idx.emplace(new_connfd, connfds.size());
+                connfds.emplace_back(new_connfd);
+            }
+            else
+            {
+                char buf[RECV_BUFSIZE];
+                int connfd = events[i].data.fd;
 
+                ssize_t recv_len = recv(connfd, buf, RECV_BUFSIZE, 0);
+
+                if (recv_len < 0)
+                    throw std::runtime_error(strerror(errno));
+                else if (!recv_len)
+                {
+                    --connect_cnt;
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, nullptr);
+                    ::close(connfd);
+                    connfds[fd2idx[connfd]] = -1;
+                    // continue;
+                }
+                else
+                    aux_send(connfd, buf, recv_len);
+            }
+        }
+    }
+}
+
+void TCPServer::forward()
+{
+    size_t connect_cnt = 0;
+
+    epoll_event ev, events[EPOLL_WAIT_MAX_EVENTS];
+    ev.events = EPOLLIN;
+    ev.data.fd = listenfd;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev) < 0)
+        throw std::runtime_error(strerror(errno));
+
+    std::unordered_map<int, size_t> fd2idx; // the subscript of connfd in vector
+    std::unordered_map<uint16_t, int> port2fd;
+    std::unordered_map<int, std::string> fd2msgdata;
+
+    for (;;)
+    {
+        int nfds;
+
+        if (!connect_cnt)
+            nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, MAX_IDLE_TIME_MS);
+        else
+            nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, -1);
+
+        if (nfds < 0)
+        {
+            if (EINTR == errno)
+                continue;
+            else
+                throw std::runtime_error(strerror(errno));
+        }
+
+        if (!nfds && !connect_cnt)
+            break;
+
+        for (int i = 0; i < nfds; ++i)
+        {
+            if (events[i].data.fd == listenfd)
+            {
+                sockaddr_in clientaddr;
+                socklen_t addr_len = sizeof(clientaddr);
+
+                int new_connfd = accept(listenfd, reinterpret_cast<sockaddr *>(&clientaddr), &addr_len);
+                if (new_connfd < 0)
+                    throw std::runtime_error(strerror(errno));
+
+                int flags = fcntl(new_connfd, F_GETFL, 0);
+                if (flags < 0)
+                    throw std::runtime_error(strerror(errno));
+
+                if (fcntl(new_connfd, F_SETFL, flags | O_NONBLOCK) < 0)
+                    throw std::runtime_error(strerror(errno));
+
+                ev.events = EPOLLIN | EPOLLET;
+                ev.data.fd = new_connfd;
+                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_connfd, &ev) < 0)
+                    throw std::runtime_error(strerror(errno));
+                
+                ++connect_cnt;
                 fd2idx.emplace(new_connfd, connfds.size());
                 port2fd.emplace(clientaddr.sin_port, new_connfd);
                 connfds.emplace_back(new_connfd);
             }
             else
             {
-                char buf[RECV_BUF_SIZE];
+                char buf[RECV_BUFSIZE];
                 int connfd = events[i].data.fd;
 
-                ssize_t recv_len = recv(connfd, buf, RECV_BUF_SIZE, 0);
+                ssize_t recv_len = recv(connfd, buf, RECV_BUFSIZE, 0);
 
                 if (recv_len < 0)
                     throw std::runtime_error(strerror(errno));
                 else if (!recv_len)
                 {
+                    --connect_cnt;
+                    epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, nullptr);
                     ::close(connfd);
                     connfds[fd2idx[connfd]] = -1;
                     // continue;
@@ -257,7 +268,7 @@ void TCPServer::forward()
                     }
                     else
                     {
-                        char larger_buf[RECV_BUF_SIZE << 1];
+                        char larger_buf[RECV_BUFSIZE << 1];
                         size_t len = last_recv_data.size() + recv_len;
                         memcpy(larger_buf, last_recv_data.data(), /* sizeof(char) * */ last_recv_data.size());
                         memcpy(larger_buf + last_recv_data.size(), buf, /* sizeof(char) * */ recv_len);
@@ -304,12 +315,13 @@ void TCPServer::aux_send(int fd, const char *msg, size_t length)
         {
             if (EWOULDBLOCK == errno || EAGAIN == errno)
             {
-                int poll_ret = poll(&pfd, 1, SEND_POLL_TIMEOUT_MS);
+                int poll_ret = poll(&pfd, 1, -1);
 
                 if (poll_ret > 0)
                     continue;
                 else
                     throw std::runtime_error(strerror(errno));
+                continue;
             }
             else
                 throw std::runtime_error(strerror(errno));
