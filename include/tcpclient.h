@@ -35,9 +35,7 @@ protected:
     bool connected;
 
 protected:
-    static constexpr int CONNECT_POLL_TIMEOUT_MS = 100;
-    static constexpr int SEND_POLL_TIMEOUT_MS = 10;
-    static constexpr int RECV_POLL_TIMEOUT_MS = 10;
+    static constexpr int POLL_TIMEOUT_MS = 1000;
 };
 
 #endif
