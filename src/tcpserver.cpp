@@ -131,7 +131,7 @@ void TCPServer::echo()
                 ev.data.fd = new_connfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_connfd, &ev) < 0)
                     throw std::runtime_error(strerror(errno));
-                
+
                 ++connect_cnt;
                 fd2idx.emplace(new_connfd, connfds.size());
                 connfds.emplace_back(new_connfd);
@@ -216,7 +216,7 @@ void TCPServer::forward()
                 ev.data.fd = new_connfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_connfd, &ev) < 0)
                     throw std::runtime_error(strerror(errno));
-                
+
                 ++connect_cnt;
                 fd2idx.emplace(new_connfd, connfds.size());
                 port2fd.emplace(clientaddr.sin_port, new_connfd);
