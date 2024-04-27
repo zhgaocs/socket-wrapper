@@ -84,7 +84,7 @@ void TCPClient::close()
 ssize_t TCPClient::send(const char *buf, size_t bufsize) const
 {
     if (!connected)
-       return -1;
+        return -1;
 
     size_t total_sent = 0;
     ssize_t sent_len = 0;
