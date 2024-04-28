@@ -22,7 +22,7 @@ void parse_arguments(char *const *const argv, int argc)
                     "  -m, --message-size    Set the message size (default: 128)\n"
                     "  -s, --sessions        Set the number of sessions (default: 100)\n",
                     argv[0]);
-            exit(EXIT_SUCCESS);
+            exit(EX_OK);
 
         case 'm':
             message_size = atoi(optarg);
@@ -36,7 +36,7 @@ void parse_arguments(char *const *const argv, int argc)
             fprintf(stderr,
                     "%s: missing parameter\nTry '%s --help' for more information.\n",
                     argv[0], argv[0]);
-            exit(EXIT_FAILURE);
+            exit(EX_USAGE);
 
         case '?':
             if (optopt)
@@ -47,11 +47,10 @@ void parse_arguments(char *const *const argv, int argc)
                 fprintf(stderr,
                         "%s: unrecognized option '%s'\nTry '%s --help' for more information.\n",
                         argv[0], argv[optind - 1], argv[0]);
-            exit(EXIT_FAILURE);
+            exit(EX_USAGE);
 
         default:
-            opterr = 1;
-            exit(EXIT_FAILURE);
+            exit(EX_USAGE);
         }
     }
 }
