@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <getopt.h>
+#include <sysexits.h>
 
 extern int sessions;
 extern int message_size;
