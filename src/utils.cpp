@@ -15,11 +15,13 @@ void parse_arguments(char *const *const argv, int argc)
         switch (opt)
         {
         case 'h':
-            printf("Usage: program [OPTIONS]\n\n"
-                   "Options:\n"
-                   "  -h, --help            Show this help message and exit\n"
-                   "  -m, --message-size    Set the message size (default: 128)\n"
-                   "  -s, --sessions        Set the number of sessions (default: 100)\n");
+            fprintf(stdout,
+                    "Usage: %s [OPTIONS]\n"
+                    "Options:\n"
+                    "  -h, --help            Show this help message and exit\n"
+                    "  -m, --message-size    Set the message size (default: 128)\n"
+                    "  -s, --sessions        Set the number of sessions (default: 100)\n",
+                    argv[0]);
             exit(EXIT_SUCCESS);
 
         case 'm':
@@ -32,20 +34,19 @@ void parse_arguments(char *const *const argv, int argc)
 
         case ':':
             fprintf(stderr,
-                    "%s: missing parameter\nTry '%s --help' for more information.",
+                    "%s: missing parameter\nTry '%s --help' for more information.\n",
                     argv[0], argv[0]);
             exit(EXIT_FAILURE);
 
         case '?':
-            fprintf(stderr,
-                    "%s: invalid option -- '%d'\nTry '%s --help' for more information.",
-                    argv[0], optopt, argv[0]);
-            exit(EXIT_FAILURE);
-
-        case '0':
-            fprintf(stderr,
-                    "%s: unrecognized option '%s'\nTry '%s --help' for more information.",
-                    argv[0], argv[optind - 1], argv[0]);
+            if (optopt)
+                fprintf(stderr,
+                        "%s: invalid option -- '%c'\nTry '%s --help' for more information.\n",
+                        argv[0], optopt, argv[0]);
+            else
+                fprintf(stderr,
+                        "%s: unrecognized option '%s'\nTry '%s --help' for more information.\n",
+                        argv[0], argv[optind - 1], argv[0]);
             exit(EXIT_FAILURE);
 
         default:
