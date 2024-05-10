@@ -2,8 +2,8 @@
 #define MESSAGE_H 1
 
 #include <netinet/in.h>
+#include <string.h>
 
-#include <cstring>
 #include <stdexcept>
 #include <utility>
 
