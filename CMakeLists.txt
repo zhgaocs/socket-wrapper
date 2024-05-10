@@ -4,8 +4,8 @@ project(socket-wrapper)
 
 set(SOURCES
     src/message.cpp
-    src/tcpclient.cpp
     src/tcpserver.cpp
+    src/tcpsocket.cpp
     src/utils.cpp
     test/main.cpp
 )
