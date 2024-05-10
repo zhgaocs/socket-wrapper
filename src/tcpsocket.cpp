@@ -1,28 +1,35 @@
-#include "tcpclient.h"
+#include "tcpsocket.h"
 
-TCPClient::TCPClient()
-    : sockfd(socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)),
+TcpSocket::TcpSocket()
+    : sockfd(-1),
       connected(false)
 {
+}
+
+TcpSocket::~TcpSocket()
+{
     if (sockfd < 0)
+        return;
+    close(sockfd);
+}
+
+bool TcpSocket::is_connected() const
+{
+    return connected;
+}
+
+void TcpSocket::connect(const char *ip, uint16_t port)
+{
+    if (sockfd < 0 && (sockfd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)) < 0)
         throw std::runtime_error(strerror(errno));
-}
 
-TCPClient::~TCPClient()
-{
-    close();
-}
-
-bool TCPClient::connect(const char *servip, uint16_t servport)
-{
-    if (sockfd < 0)
-        return false;
+    disconnect();
 
     sockaddr_in servaddr;
     servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(servport);
+    servaddr.sin_port = htons(port);
 
-    if (inet_pton(AF_INET, servip, &servaddr.sin_addr) <= 0)
+    if (inet_pton(AF_INET, ip, &servaddr.sin_addr) <= 0)
         throw std::runtime_error(strerror(errno));
 
     if (::connect(sockfd, reinterpret_cast<sockaddr *>(&servaddr), sizeof(servaddr)) < 0)
@@ -49,65 +56,27 @@ bool TCPClient::connect(const char *servip, uint16_t servport)
                     throw std::runtime_error(strerror(optval));
 
                 connected = true;
-                return true;
             }
             else if (!poll_ret)
-            {
                 connected = false;
-                return false;
-            }
             else
                 throw std::runtime_error(strerror(errno));
         }
     }
     else
-    {
         connected = true;
-        return true;
-    }
 }
 
-bool TCPClient::is_connected() const
+void TcpSocket::disconnect()
 {
-    return connected;
-}
-
-void TCPClient::close()
-{
-    connected = false;
-    if (sockfd < 0)
-        return;
-    ::close(sockfd);
-    sockfd = -1;
-}
-
-ssize_t TCPClient::send(const char *buf, size_t bufsize) const
-{
-    if (!connected)
-        return -1;
-
-    size_t total_sent = 0;
-    ssize_t sent_len = 0;
-
-    while (total_sent < bufsize)
+    if (connected)
     {
-        sent_len = ::send(sockfd, buf + total_sent, bufsize - total_sent, 0);
-
-        if (sent_len < 0)
-        {
-            if (EWOULDBLOCK == errno || EAGAIN == errno)
-                break;
-            else
-                throw std::runtime_error(strerror(errno));
-        }
-
-        total_sent += sent_len;
+        shutdown(sockfd, SHUT_RDWR);
+        connected = false;
     }
-
-    return static_cast<ssize_t>(total_sent);
 }
 
-ssize_t TCPClient::receive(char *buf, size_t bufsize) const
+ssize_t TcpSocket::read(char *buf, size_t bufsize) const
 {
     if (!connected)
         return -1;
@@ -117,7 +86,7 @@ ssize_t TCPClient::receive(char *buf, size_t bufsize) const
 
     while (total_received < bufsize)
     {
-        recv_len = recv(sockfd, buf + total_received, bufsize - total_received, 0);
+        recv_len = ::read(sockfd, buf + total_received, bufsize - total_received);
 
         if (recv_len < 0)
         {
@@ -135,7 +104,33 @@ ssize_t TCPClient::receive(char *buf, size_t bufsize) const
     return static_cast<ssize_t>(total_received);
 }
 
-uint16_t TCPClient::get_port() const
+ssize_t TcpSocket::write(const char *buf, size_t bufsize) const
+{
+    if (!connected)
+        return -1;
+
+    size_t total_sent = 0;
+    ssize_t sent_len = 0;
+
+    while (total_sent < bufsize)
+    {
+        sent_len = ::write(sockfd, buf + total_sent, bufsize - total_sent);
+
+        if (sent_len < 0)
+        {
+            if (EWOULDBLOCK == errno || EAGAIN == errno)
+                break;
+            else
+                throw std::runtime_error(strerror(errno));
+        }
+
+        total_sent += sent_len;
+    }
+
+    return static_cast<ssize_t>(total_sent);
+}
+
+uint16_t TcpSocket::self_port() const
 {
     if (!connected)
         return 0;
