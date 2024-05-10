@@ -54,3 +54,17 @@ void parse_arguments(char *const *const argv, int argc)
         }
     }
 }
+
+void fill_buffer(char *buf, size_t bufsize)
+{
+    constexpr char charset[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+    if (bufsize)
+    {
+        for (int i = 0; i < bufsize; ++i)
+        {
+            int idx = rand() % (sizeof(charset) - 1);
+            buf[i] = charset[idx];
+        }
+    }
+}
