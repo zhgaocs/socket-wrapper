@@ -2,38 +2,36 @@
 #define TCPSERVER_H 1
 
 #include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <cerrno>
 #include <unordered_map>
 #include <vector>
 
 #include "message.h"
 
-class TCPServer
+class TcpServer
 {
 public:
-    TCPServer(uint16_t port);
-    ~TCPServer();
+    TcpServer();
+    ~TcpServer();
 
 public:
-    TCPServer(const TCPServer &) = delete;
-    TCPServer &operator=(const TCPServer &) = delete;
+    TcpServer(const TcpServer &) = delete;
+    TcpServer &operator=(const TcpServer &) = delete;
 
 public:
-    void run();
+    bool is_listening() const;
+    void listen(const char *ip, uint16_t port);
     void close();
+    void run();
 
 protected:
-    void echo();
-    void forward();
-
-protected:
-    static void aux_send(int fd, const char *buf, size_t length);
+    void aux_write(int fd, const char *buf, size_t bufsize);
 
 protected:
     int listenfd;
@@ -43,7 +41,7 @@ protected:
 protected:
     static constexpr int LISTEN_BACKLOG = 32;
     static constexpr int RECV_BUFSIZE = 32;
-    static constexpr int MAX_IDLE_TIME_MS = 5000;
+    static constexpr int MAX_IDLE_TIME_MS = 10000;
     static constexpr int EPOLL_WAIT_MAX_EVENTS = 32;
 };
 
