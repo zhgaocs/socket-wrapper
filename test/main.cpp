@@ -4,8 +4,8 @@
 #include "tcpsocket.h"
 #include "utils.h"
 
-int sessions = 5;
-int message_size = 16;
+int sessions = 100;
+int message_size = 32;
 
 int main(int argc, char *argv[])
 {
@@ -33,16 +33,22 @@ int main(int argc, char *argv[])
         {
             srand(time(nullptr));
 
-            Message message;
+            int connect_cnt = 0;
+
             char *buf = new char[message_size];
             char *msg_buf = new char[message_size + sizeof(Header)];
 
+            Message message;
             std::vector<TcpSocket> clients(sessions << 1);
 
             for (auto &client : clients)
+            {
                 client.connect("127.0.0.1", 12345);
+                if (client.is_connected())
+                    ++connect_cnt;
+            }
 
-            for (;;)
+            while (connect_cnt)
             {
                 for (int i = 0; i < clients.size(); ++i)
                 {
@@ -50,19 +56,20 @@ int main(int argc, char *argv[])
                     {
                         if (clients[i].is_connected())
                         {
-                            if (clients[i + 1].is_connected())
-                            {
-                                int real_bufsize = clients[i + 1].read(msg_buf, message_size + sizeof(Header));
-                                deserialize(message, msg_buf, real_bufsize);
+                            int real_bufsize = clients[i + 1].read(msg_buf, message_size + sizeof(Header));
+                            deserialize(message, msg_buf, real_bufsize);
 
-                                fprintf(stdout, "Client#%-5d(port#%-5d) recvs from port#%-5d: ",
-                                        i, message.header.dst_port, message.header.src_port);
-                                fwrite(message.data, sizeof(char), message.header.data_len, stdout);
-                                fprintf(stdout, "\n");
-                            }
+                            fprintf(stdout, "port#%-5d <- port#%-5d: ",
+                                    message.header.dst_port, message.header.src_port);
+                            fwrite(message.data, sizeof(char), message.header.data_len, stdout);
+                            fprintf(stdout, "\n");
 
                             if (!(rand() % 10))
+                            {
+                                --connect_cnt;
+                                fprintf(stdout, "port#%-5d disconnect\n", clients[i].self_port());
                                 clients[i].disconnect();
+                            }
                         }
                         // else if (!(rand() % 10))
                         //     clients[i].connect("127.0.0.1", 12345);
@@ -83,21 +90,29 @@ int main(int argc, char *argv[])
                                 serialize(msg_buf, message_size + sizeof(Header), message);
                                 clients[i].write(msg_buf, message_size + sizeof(Header));
 
-
-                                fprintf(stdout, "Client#%-5d(port#%-5d) sends to   port#%-5d: ",
-                                        i, message.header.src_port, message.header.dst_port);
+                                fprintf(stdout, "port#%-5d -> port#%-5d: ",
+                                        message.header.src_port, message.header.dst_port);
                                 fwrite(message.data, sizeof(char), message.header.data_len, stdout);
                                 fprintf(stdout, "\n");
                             }
 
-                            if (!(rand() % 10))
+                            if (!(rand() % 10) || !clients[i + 1].is_connected())
+                            {
+                                --connect_cnt;
+                                fprintf(stdout, "port#%-5d disconnect\n", clients[i].self_port());
                                 clients[i].disconnect();
+                            }
                         }
                         // else if (!(rand() % 10))
                         //     clients[i].connect("127.0.0.1", 12345);
                     }
                 }
             }
+
+            fprintf(stdout, "client_thread ends\n");
+            
+            delete[] buf;
+            delete[] msg_buf;
         }
         catch (const std::exception &e)
         {
