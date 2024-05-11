@@ -17,4 +17,7 @@ target_include_directories(socket-wrapper-test
         ${PROJECT_SOURCE_DIR}/include
 )
 
+target_compile_options(socket-wrapper-test PRIVATE -pg) # for use gprof
+target_link_options(socket-wrapper-test PRIVATE -pg) # for use gprof
+
 target_link_libraries(socket-wrapper-test pthread)
