@@ -40,7 +40,6 @@ protected:
 
 protected:
     static constexpr int LISTEN_BACKLOG = 32;
-    static constexpr int RECV_BUFSIZE = 32;
     static constexpr int MAX_IDLE_TIME_MS = 10000;
     static constexpr int EPOLL_WAIT_MAX_EVENTS = 32;
 };

@@ -1,5 +1,7 @@
 #include "tcpserver.h"
 
+#define RECV_BUFSIZE 32
+
 TcpServer::TcpServer()
     : listenfd(-1),
       epollfd(-1),
@@ -76,7 +78,7 @@ void TcpServer::run()
 
     size_t connect_cnt = 0;
 
-    epoll_event ev, evs[EPOLL_WAIT_MAX_EVENTS];
+    epoll_event ev, events[EPOLL_WAIT_MAX_EVENTS];
     ev.events = EPOLLIN;
     ev.data.fd = listenfd;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, listenfd, &ev) < 0)
@@ -91,9 +93,9 @@ void TcpServer::run()
         int nfds;
 
         if (!connect_cnt)
-            nfds = epoll_wait(epollfd, evs, EPOLL_WAIT_MAX_EVENTS, MAX_IDLE_TIME_MS);
+            nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, MAX_IDLE_TIME_MS);
         else
-            nfds = epoll_wait(epollfd, evs, EPOLL_WAIT_MAX_EVENTS, -1);
+            nfds = epoll_wait(epollfd, events, EPOLL_WAIT_MAX_EVENTS, -1);
 
         if (nfds < 0)
         {
@@ -108,7 +110,7 @@ void TcpServer::run()
 
         for (int i = 0; i < nfds; ++i)
         {
-            if (evs[i].data.fd == listenfd)
+            if (events[i].data.fd == listenfd)
             {
                 sockaddr_in clientaddr;
                 socklen_t addr_len = sizeof(clientaddr);
@@ -124,7 +126,7 @@ void TcpServer::run()
                 if (fcntl(new_connfd, F_SETFL, flags | O_NONBLOCK) < 0)
                     throw std::runtime_error(strerror(errno));
 
-                ev.events = EPOLLIN | EPOLLET;
+                ev.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
                 ev.data.fd = new_connfd;
                 if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_connfd, &ev) < 0)
                     throw std::runtime_error(strerror(errno));
@@ -134,48 +136,49 @@ void TcpServer::run()
                 port2fd.emplace(clientaddr.sin_port, new_connfd);
                 connfds.emplace_back(new_connfd);
             }
+            else if (events[i].events & EPOLLRDHUP)
+            {
+                int connfd = events[i].data.fd;
+                --connect_cnt;
+                if (epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, nullptr) < 0)
+                    throw std::runtime_error(strerror(errno));
+                ::close(connfd);
+                connfds[fd2idx[connfd]] = -1;
+                // continue;
+            }
             else
             {
-                char buf[RECV_BUFSIZE];
-                int connfd = evs[i].data.fd;
+                char recv_buf[RECV_BUFSIZE];
+                int connfd = events[i].data.fd;
 
-                ssize_t recv_len = read(connfd, buf, RECV_BUFSIZE);
+                ssize_t recv_len = read(connfd, recv_buf, RECV_BUFSIZE);
 
                 if (recv_len < 0)
                     throw std::runtime_error(strerror(errno));
-                else if (!recv_len)
+                else // recv_len > 0
                 {
-                    --connect_cnt;
-                    ::close(connfd);
-                    connfds[fd2idx[connfd]] = -1;
-                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, connfd, nullptr) < 0)
-                        throw std::runtime_error(strerror(errno));
-                    // continue;
-                }
-                else
-                {
-                    Message msg;
+                    Message message;
                     std::string &last_recv_data = fd2msgdata[connfd]; // remaining data from the last recv
 
                     if (last_recv_data.empty())
                     {
                         for (;;)
                         {
-                            int ret = deserialize(msg, buf, recv_len);
+                            int ret = deserialize(message, recv_buf, recv_len);
 
                             if (ret < 0)
                                 throw std::bad_alloc();
                             else if (!ret) // incomplete
                             {
                                 last_recv_data.resize(recv_len);
-                                memcpy(&last_recv_data[0], buf, /* sizeof(char) * */ recv_len);
+                                memcpy(&last_recv_data[0], recv_buf, /* sizeof(char) * */ recv_len);
                                 break;
                             }
                             else
                             {
-                                aux_write(port2fd[msg.header.dst_port], buf, ret);
+                                aux_write(port2fd[message.header.dst_port], recv_buf, ret);
                                 recv_len -= ret;
-                                memmove(buf, buf + ret, recv_len);
+                                memmove(recv_buf, recv_buf + ret, recv_len);
                             }
                         }
                     }
@@ -184,11 +187,11 @@ void TcpServer::run()
                         char larger_buf[RECV_BUFSIZE << 1];
                         size_t len = last_recv_data.size() + recv_len;
                         memcpy(larger_buf, last_recv_data.data(), /* sizeof(char) * */ last_recv_data.size());
-                        memcpy(larger_buf + last_recv_data.size(), buf, /* sizeof(char) * */ recv_len);
+                        memcpy(larger_buf + last_recv_data.size(), recv_buf, /* sizeof(char) * */ recv_len);
 
                         for (;;)
                         {
-                            int ret = deserialize(msg, larger_buf, len);
+                            int ret = deserialize(message, larger_buf, len);
 
                             if (ret < 0)
                                 throw std::bad_alloc();
@@ -200,7 +203,7 @@ void TcpServer::run()
                             }
                             else
                             {
-                                aux_write(port2fd[msg.header.dst_port], larger_buf, ret);
+                                aux_write(port2fd[message.header.dst_port], larger_buf, ret);
                                 len -= ret;
                                 memmove(larger_buf, larger_buf + ret, len);
                             }
